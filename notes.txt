@@ -1,0 +1,10 @@
+TITLE: My First Note
+CONTENT:
+This is my note content.
+---
+TITLE: Shopping List
+CONTENT:
+Eggs
+Milk
+Bread
+---
