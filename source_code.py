@@ -2,144 +2,189 @@ import os
 
 FILE_NAME = "notes.txt"
 
+
+# ------------ LOAD NOTES ------------
 def load_notes():
     if not os.path.exists(FILE_NAME):
         return []
 
-    notes = []
     with open(FILE_NAME, "r", encoding="utf-8") as f:
         content = f.read().strip()
 
     if not content:
         return []
 
-    raw_notes = content.split("\n---\n")
+    # Split notes safely even if formatting isn't perfect
+    raw_notes = [n.strip() for n in content.split("---") if n.strip()]
 
+    notes = []
     for n in raw_notes:
         lines = n.split("\n")
-        title = lines[0].replace("TITLE: ", "")
-        content_index = lines.index("CONTENT:")
-        data = "\n".join(lines[content_index + 1:])
+
+        # Extract title
+        if not lines[0].startswith("TITLE: "):
+            continue  # skip malformed notes
+
+        title = lines[0].replace("TITLE: ", "").strip()
+
+        # Find "CONTENT:" line
+        try:
+            content_index = lines.index("CONTENT:")
+        except ValueError:
+            continue
+
+        # Join all remaining lines as content
+        data = "\n".join(lines[content_index + 1:]).strip()
+
         notes.append({"title": title, "content": data})
 
     return notes
 
 
+# ------------ SAVE NOTES ------------
 def save_notes(notes):
     with open(FILE_NAME, "w", encoding="utf-8") as f:
         for note in notes:
             f.write(f"TITLE: {note['title']}\n")
             f.write("CONTENT:\n")
             f.write(f"{note['content']}\n")
-            f.write("---\n")
+            f.write("---\n")  # always end with separator
 
 
+# ------------ CREATE NOTE ------------
 def create_note():
-    title = input("Enter note title: ")
-    content = []
-    print("Enter note content (type 'END' on a new line to stop):")
+    print("\n--- Create New Note ---")
+    title = input("Enter note title: ").strip()
 
+    print("Enter content (type END on a new line to finish):")
+    content_lines = []
     while True:
         line = input()
         if line == "END":
             break
-        content.append(line)
+        content_lines.append(line)
 
     notes = load_notes()
-    notes.append({"title": title, "content": "\n".join(content)})
+    notes.append({"title": title, "content": "\n".join(content_lines)})
     save_notes(notes)
     print("Note saved!\n")
 
 
+# ------------ VIEW NOTES ------------
 def view_notes():
     notes = load_notes()
 
     if not notes:
-        print("No notes found.\n")
+        print("\nNo notes found.\n")
         return
 
-    print("\nAll Notes:")
-    for i, n in enumerate(notes):
-        print(f"{i+1}. {n['title']}")
-    print()
+    print("\n--- All Notes ---")
+    for i, note in enumerate(notes, 1):
+        print(f"{i}. {note['title']}")
 
-    choice = int(input("Enter note number to view (0 to cancel): "))
-    if choice == 0:
+    choice = input("\nEnter note number to view (0 to cancel): ")
+
+    if not choice.isdigit() or int(choice) < 1 or int(choice) > len(notes):
+        print("Cancelled.\n")
         return
 
-    note = notes[choice - 1]
-    print("\n====", note['title'], "====")
-    print(note['content'])
+    note = notes[int(choice) - 1]
+    print(f"\n--- {note['title']} ---")
+    print(note["content"])
     print()
 
 
+# ------------ SEARCH NOTES ------------
 def search_notes():
-    keyword = input("Enter search keyword: ").lower()
+    keyword = input("Enter keyword to search: ").lower().strip()
     notes = load_notes()
 
-    results = [n for n in notes if keyword in n['title'].lower() or keyword in n['content'].lower()]
+    results = [
+        n for n in notes
+        if keyword in n["title"].lower() or keyword in n["content"].lower()
+    ]
 
     if not results:
         print("No matching notes found.\n")
         return
 
-    print("\nSearch Results:")
-    for n in results:
-        print("- " + n['title'])
+    print("\n--- Search Results ---")
+    for note in results:
+        print(f"- {note['title']}")
     print()
 
 
+# ------------ EDIT NOTE ------------
 def edit_note():
     notes = load_notes()
 
-    for i, n in enumerate(notes):
-        print(f"{i+1}. {n['title']}")
+    if not notes:
+        print("No notes to edit.\n")
+        return
 
-    choice = int(input("Enter note number to edit: "))
-    note = notes[choice - 1]
+    for i, note in enumerate(notes, 1):
+        print(f"{i}. {note['title']}")
 
-    print("Current content:")
-    print(note['content'])
+    choice = input("\nEnter note number to edit: ")
 
-    print("\nEnter new content (type 'END' to finish):")
-    content = []
+    if not choice.isdigit() or int(choice) < 1 or int(choice) > len(notes):
+        print("Invalid choice.\n")
+        return
+
+    note = notes[int(choice) - 1]
+
+    print("\nCurrent content:")
+    print(note["content"])
+
+    print("\nEnter new content (type END to finish):")
+    new_lines = []
     while True:
         line = input()
         if line == "END":
             break
-        content.append(line)
+        new_lines.append(line)
 
-    note['content'] = "\n".join(content)
+    note["content"] = "\n".join(new_lines)
     save_notes(notes)
     print("Note updated!\n")
 
 
+# ------------ DELETE NOTE ------------
 def delete_note():
     notes = load_notes()
 
-    for i, n in enumerate(notes):
-        print(f"{i+1}. {n['title']}")
+    if not notes:
+        print("No notes to delete.\n")
+        return
 
-    choice = int(input("Enter note number to delete: "))
+    for i, note in enumerate(notes, 1):
+        print(f"{i}. {note['title']}")
 
-    removed = notes.pop(choice - 1)
+    choice = input("\nEnter note number to delete: ")
+
+    if not choice.isdigit() or int(choice) < 1 or int(choice) > len(notes):
+        print("Invalid choice.\n")
+        return
+
+    deleted = notes.pop(int(choice) - 1)
     save_notes(notes)
-    print(f"Deleted note: {removed['title']}\n")
+    print(f"Deleted: {deleted['title']}\n")
 
 
+# ------------ MAIN MENU ------------
 def main():
     while True:
         print("==========================")
         print("  Personal Knowledge Vault")
         print("==========================")
         print("1. Create Note")
-        print("2. View All Notes")
+        print("2. View Notes")
         print("3. Search Notes")
         print("4. Edit Note")
         print("5. Delete Note")
         print("6. Exit")
 
-        choice = input("Enter your choice: ")
+        choice = input("Enter choice: ")
 
         if choice == "1":
             create_note()
@@ -155,7 +200,7 @@ def main():
             print("Goodbye!")
             break
         else:
-            print("Invalid choice. Try again.\n")
+            print("Invalid option.\n")
 
 
 if __name__ == "__main__":
