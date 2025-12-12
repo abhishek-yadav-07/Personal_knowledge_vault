@@ -7,6 +7,8 @@ Features:
 
 Create notes
 
+Add tags, Edit tags and Search by tags
+
 View all notes
 
 Search notes by keyword
