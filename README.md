@@ -1,4 +1,4 @@
-#Personal_Knowledge_vault
+# Personal_Knowledge_vault
 This is a simple terminal-based notes application created for the SOSC Recruitment Round 2.
 It allows users to create, view, search, edit, and delete notes stored locally in a TXT file.
 
