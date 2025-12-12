@@ -14,29 +14,38 @@ def load_notes():
     if not content:
         return []
 
-    # Split notes safely even if formatting isn't perfect
     raw_notes = [n.strip() for n in content.split("---") if n.strip()]
-
     notes = []
+
     for n in raw_notes:
         lines = n.split("\n")
 
-        # Extract title
+        # Must start with TITLE
         if not lines[0].startswith("TITLE: "):
-            continue  # skip malformed notes
+            continue
 
         title = lines[0].replace("TITLE: ", "").strip()
 
-        # Find "CONTENT:" line
+        # TAGS line
+        try:
+            tags_line = next(l for l in lines if l.startswith("TAGS:"))
+            tags = tags_line.replace("TAGS:", "").strip()
+        except StopIteration:
+            tags = ""
+
+        # CONTENT starts after "CONTENT:"
         try:
             content_index = lines.index("CONTENT:")
         except ValueError:
             continue
 
-        # Join all remaining lines as content
-        data = "\n".join(lines[content_index + 1:]).strip()
+        content_data = "\n".join(lines[content_index + 1:]).strip()
 
-        notes.append({"title": title, "content": data})
+        notes.append({
+            "title": title,
+            "tags": tags,
+            "content": content_data
+        })
 
     return notes
 
@@ -46,15 +55,17 @@ def save_notes(notes):
     with open(FILE_NAME, "w", encoding="utf-8") as f:
         for note in notes:
             f.write(f"TITLE: {note['title']}\n")
+            f.write(f"TAGS: {note['tags']}\n")
             f.write("CONTENT:\n")
             f.write(f"{note['content']}\n")
-            f.write("---\n")  # always end with separator
+            f.write("---\n")
 
 
 # ------------ CREATE NOTE ------------
 def create_note():
     print("\n--- Create New Note ---")
     title = input("Enter note title: ").strip()
+    tags = input("Enter tags (comma separated): ").strip()
 
     print("Enter content (type END on a new line to finish):")
     content_lines = []
@@ -65,7 +76,12 @@ def create_note():
         content_lines.append(line)
 
     notes = load_notes()
-    notes.append({"title": title, "content": "\n".join(content_lines)})
+    notes.append({
+        "title": title,
+        "tags": tags,
+        "content": "\n".join(content_lines)
+    })
+
     save_notes(notes)
     print("Note saved!\n")
 
@@ -79,8 +95,8 @@ def view_notes():
         return
 
     print("\n--- All Notes ---")
-    for i, note in enumerate(notes, 1):
-        print(f"{i}. {note['title']}")
+    for i, n in enumerate(notes, 1):
+        print(f"{i}. {n['title']}  (Tags: {n['tags']})")
 
     choice = input("\nEnter note number to view (0 to cancel): ")
 
@@ -90,8 +106,8 @@ def view_notes():
 
     note = notes[int(choice) - 1]
     print(f"\n--- {note['title']} ---")
-    print(note["content"])
-    print()
+    print(f"Tags: {note['tags']}")
+    print("\n" + note["content"] + "\n")
 
 
 # ------------ SEARCH NOTES ------------
@@ -101,7 +117,9 @@ def search_notes():
 
     results = [
         n for n in notes
-        if keyword in n["title"].lower() or keyword in n["content"].lower()
+        if keyword in n["title"].lower()
+        or keyword in n["content"].lower()
+        or keyword in n["tags"].lower()
     ]
 
     if not results:
@@ -110,7 +128,7 @@ def search_notes():
 
     print("\n--- Search Results ---")
     for note in results:
-        print(f"- {note['title']}")
+        print(f"- {note['title']}  (Tags: {note['tags']})")
     print()
 
 
@@ -122,8 +140,8 @@ def edit_note():
         print("No notes to edit.\n")
         return
 
-    for i, note in enumerate(notes, 1):
-        print(f"{i}. {note['title']}")
+    for i, n in enumerate(notes, 1):
+        print(f"{i}. {n['title']} (Tags: {n['tags']})")
 
     choice = input("\nEnter note number to edit: ")
 
@@ -133,18 +151,33 @@ def edit_note():
 
     note = notes[int(choice) - 1]
 
+    print("\nCurrent title:", note["title"])
+    new_title = input("New title (press Enter to keep same): ").strip()
+    if new_title:
+        note["title"] = new_title
+
+    print("\nCurrent tags:", note["tags"])
+    new_tags = input("New tags (comma separated, Enter to keep same): ").strip()
+    if new_tags:
+        note["tags"] = new_tags
+
     print("\nCurrent content:")
     print(note["content"])
 
-    print("\nEnter new content (type END to finish):")
-    new_lines = []
-    while True:
-        line = input()
-        if line == "END":
-            break
-        new_lines.append(line)
+    print("\nEnter new content (type END to finish, Enter to keep same):")
+    first_input = input()
 
-    note["content"] = "\n".join(new_lines)
+    if first_input != "":
+        content_lines = []
+        if first_input != "END":
+            content_lines.append(first_input)
+        while first_input != "END":
+            line = input()
+            if line == "END":
+                break
+            content_lines.append(line)
+        note["content"] = "\n".join(content_lines)
+
     save_notes(notes)
     print("Note updated!\n")
 
@@ -158,7 +191,7 @@ def delete_note():
         return
 
     for i, note in enumerate(notes, 1):
-        print(f"{i}. {note['title']}")
+        print(f"{i}. {note['title']} (Tags: {note['tags']})")
 
     choice = input("\nEnter note number to delete: ")
 
